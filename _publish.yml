@@ -1,0 +1,4 @@
+- source: repeated_measures_anova.qmd
+  quarto-pub:
+    - id: 67db8333-f842-4c82-b1b3-5f5078160c89
+      url: 'https://hbowley.quarto.pub/repeated-measures-anova'

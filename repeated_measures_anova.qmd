@@ -1,0 +1,296 @@
+---
+title: "Repeated Measures ANOVA"
+author:
+  - name: Hannah Bowley
+  - name: Micaela Lembo
+format: html
+toc: true
+toc-expand: 6
+theme: lux
+---
+
+## Repeated measures ANOVA
+
+Repeated measure ANOVA is used for analyzing data where the same subjects are measured more than once
+
+There are three types of repeated measures ANOVA:
+
+1.  **One-way repeated measure ANOVA**: similar to a paired samples t-test.Compares the means of 3 or more categories of 1 within-subject variable (1 independent factor)
+
+2.  **Two-way repeated measure ANOVA**: evaluates the effects of two within-subject factors (2 independent variables) on a continuous dependent variables
+
+
+### Assumptions
+
+1.  No significant outliers
+
+2.  Normality
+
+3.  Assumption of sphericity
+
+### Hypothesis
+
+(NEED TO ADD IN EQUATION)
+
+**Null hypothesis:** - No difference in group means at any time points
+
+**Alternative hypothesis:** - Significant difference in group mean in at least one or more time points
+
+## Packages and Libraries
+
+### Installing Packages
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+
+# install.packages("tidyverse")
+# install.packages("datarium")
+
+```
+
+### Loading Libraries
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+library(datarium)
+library(tidyverse)
+library(rstatix)
+library(gt)
+
+```
+## One-way Repeated Measures ANOVA
+
+### Looking at data
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+
+data("selfesteem", package = "datarium")
+
+selfesteem
+
+```
+
+The dataset contains 10 individuals' self-esteem score on three time points during a specific diet to determine whether their self-esteem improved.
+
+### Wide to long format
+
+Currently the selfesteem data set is in wide format. In order to run some of the statistical test, we need to transform it into long format
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+
+# 
+selfesteem <- selfesteem %>%
+  gather(key = "time", value = "score", t1, t2, t3) 
+
+# checking to see if it converted correctly
+selfesteem
+
+
+```
+
+
+### Run summary statistics
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+selfesteem %>% 
+  group_by(time) %>% 
+  summarize(mean = mean(score),
+            sd = sd(score))
+
+
+```
+
+### Visualizing the data
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+bxp <- ggplot(selfesteem, aes(x = time, y = score))+
+  geom_boxplot() + 
+  ggtitle("Self esteem score across time points") +
+  theme(axis.text.x = element_text(size = 8, angle = 90, vjust = 0.5))
+
+bxp
+```
+
+### Checking Assumptions
+
+#### Normality
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+ggplot(selfesteem, aes(sample = score)) +
+  stat_qq()+
+  geom_qq_line()+
+  facet_wrap(~time, ncol = 3)
+
+ggplot(selfesteem, aes(sample = score))+
+  stat_qq() +
+  geom_qq_line()
+
+```
+#### Sphericity
+Sphericity: variances of the differences between all combinations of related groups are equal
+
+##### Mauchly's Test of Sphericity 
+Null hypothesis: the variances of the differences are equal
+Alternative Hypothesis: The variances of the differences are not equal 
+
+
+### Conducting One-way repeated measures ANOVA
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+rm_aov <- anova_test(
+  data = selfesteem,
+  dv = score,
+  wid = id,
+  within = time,
+  detailed = TRUE
+)
+
+rm_aov
+
+gt(get_anova_table(rm_aov))
+
+
+```
+Greenhouse-Geisser sphericity correction applied to within subject factors where the assumptions were violated
+
+### Post-hoc test
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+selfesteem %>% 
+  pairwise_t_test(score ~  time, paired = TRUE, p.adjust.method =  "bonf") %>% 
+  gt()
+
+```
+## Two-way Repeated Measures ANOVA
+
+### Looking at data
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+head(selfesteem2, 5)
+tail(selfesteem2, 5)
+```
+The selfesteem2 dataset contains the self-esteem score of 12 subjects who were randomized into either a control or special diet treatment. Self-esteem scores were recorded at 3 time points 
+
+### Wide to long format
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+selfesteem2_long <- selfesteem2 %>% 
+  pivot_longer(cols = c(t1:t3), names_to = "time", values_to = "score")
+```
+
+### Run summary statistics
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+selfesteem2_long %>% 
+  group_by(time, treatment) %>% 
+  summarize(mean = mean(score),
+            sd = sd(score))
+
+```
+
+### Visualizing the data
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+ggplot(
+  data = selfesteem2_long,
+  aes(x = time, y = score, color = treatment)
+  ) + 
+  geom_boxplot()
+```
+### Checking Assumptions
+
+#### Checking for normality visually using qqplot
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+ggplot(selfesteem2_long, aes(sample = score)) +
+  stat_qq()+
+  geom_qq_line()+
+  facet_grid(rows = vars(treatment), cols = vars(time))
+```
+### Conducting Two-way repeated measures ANOVA
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+two_way_anova <- selfesteem2_long %>% 
+  anova_test(
+    dv = score,
+    wid = id,
+    within = c(treatment, time)
+)
+two_way_anova
+
+gt(get_anova_table(two_way_anova))
+
+```
+### Post-hoc test
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+selfesteem2_long %>% 
+  group_by(time) %>% 
+  pairwise_t_test(score ~ treatment, paired = TRUE, p.adjust.method = "bonf") %>% 
+  gt()
+
+```
+
+
+
