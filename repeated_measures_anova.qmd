@@ -30,11 +30,13 @@ There are three types of repeated measures ANOVA:
 
 ### Hypothesis
 
-(NEED TO ADD IN EQUATION)
-
 **Null hypothesis:** - No difference in group means at any time points
 
+H0: µ1 = µ2 = µ3 = … = µk
+
 **Alternative hypothesis:** - Significant difference in group mean in at least one or more time points
+
+H0: µ1 ≠ µ2 = µ3 = … = µk
 
 ## Packages and Libraries
 
@@ -48,6 +50,8 @@ There are three types of repeated measures ANOVA:
 
 # install.packages("tidyverse")
 # install.packages("datarium")
+# install.packages("rstatix")
+# install.packages("gt")
 
 ```
 
@@ -64,6 +68,7 @@ library(rstatix)
 library(gt)
 
 ```
+
 ## One-way Repeated Measures ANOVA
 
 ### Looking at data
@@ -72,7 +77,6 @@ library(gt)
 #| echo: true
 #| message: false
 #| warning: false
-
 
 data("selfesteem", package = "datarium")
 
@@ -91,16 +95,24 @@ Currently the selfesteem data set is in wide format. In order to run some of the
 #| message: false
 #| warning: false
 
-
-# 
 selfesteem <- selfesteem %>%
-  gather(key = "time", value = "score", t1, t2, t3) 
+  pivot_longer(cols = c(t1:t3), names_to = "time", values_to = "score")
 
 # checking to see if it converted correctly
+
 selfesteem
 
 
 ```
+### Hypothesis
+
+**Null hypothesis:** - No difference in group self esteem scores at any time points
+
+H0: µ1 = µ2 = µ3 = … = µk
+
+**Alternative hypothesis:** - Significant difference in group self esteem scores in at least one or more time points
+
+H0: µ1 ≠ µ2 = µ3 = … = µk
 
 
 ### Run summary statistics
@@ -117,6 +129,7 @@ selfesteem %>%
 
 
 ```
+The mean for time 1 (t1) was found to be 3.140, time 2 (t2) is equal to 4.933 and time 3 (t3) was found to be 7.6363
 
 ### Visualizing the data
 
@@ -132,6 +145,8 @@ bxp <- ggplot(selfesteem, aes(x = time, y = score))+
 
 bxp
 ```
+The box plot show similar results to what was also found in the summary statistic
+
 
 ### Checking Assumptions
 
@@ -153,11 +168,13 @@ ggplot(selfesteem, aes(sample = score))+
 
 ```
 #### Sphericity
-Sphericity: variances of the differences between all combinations of related groups are equal
+** Sphericity **: variances of the differences between all combinations of related groups are equal
 
 ##### Mauchly's Test of Sphericity 
-Null hypothesis: the variances of the differences are equal
-Alternative Hypothesis: The variances of the differences are not equal 
+
+**Null hypothesis** : the variances of the differences are equal
+
+**Alternative Hypothesis**: The variances of the differences are not equal 
 
 
 ### Conducting One-way repeated measures ANOVA
@@ -167,11 +184,17 @@ Alternative Hypothesis: The variances of the differences are not equal
 #| message: false
 #| warning: false
 
+# anova_test function 
+
 rm_aov <- anova_test(
+# dv  stands for dependent variable
   data = selfesteem,
   dv = score,
+# wid is the subject identification   
   wid = id,
+# within subject factors
   within = time,
+# When true, the output gives the sphericity test 
   detailed = TRUE
 )
 
@@ -183,6 +206,13 @@ gt(get_anova_table(rm_aov))
 ```
 Greenhouse-Geisser sphericity correction applied to within subject factors where the assumptions were violated
 
+
+#### Intrepretation 
+
+
+Given that the p-value is less the 0.05, there is significant differences in self-essteem scores in at least one time point, meaning that we reject the null hypothesis. 
+
+
 ### Post-hoc test
 
 ```{r}
@@ -190,11 +220,14 @@ Greenhouse-Geisser sphericity correction applied to within subject factors where
 #| message: false
 #| warning: false
 
+
 selfesteem %>% 
   pairwise_t_test(score ~  time, paired = TRUE, p.adjust.method =  "bonf") %>% 
   gt()
 
 ```
+Here in the post-hoc test, we can see that there is significant difference in means between every time point
+
 ## Two-way Repeated Measures ANOVA
 
 ### Looking at data
@@ -271,6 +304,7 @@ two_way_anova <- selfesteem2_long %>%
   anova_test(
     dv = score,
     wid = id,
+# express two within subject variables in order to make this a 2-way anova 
     within = c(treatment, time)
 )
 two_way_anova
@@ -278,6 +312,11 @@ two_way_anova
 gt(get_anova_table(two_way_anova))
 
 ```
+#### Interprtation 
+
+The table above shows that there is a statistically significant two-way interaction between time and treatment 
+
+
 ### Post-hoc test
 
 ```{r}
@@ -291,6 +330,5 @@ selfesteem2_long %>%
   gt()
 
 ```
-
-
+At time 2 & 3, there is a difference between control and diet 
 
